@@ -71,11 +71,11 @@ jobs:
         -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
         -d "{
           \"fields\": {
-            \"PullRequestNumber\": \"${{ github.event.pull_request.number }}\",
-            \"PullRequestAuthor\": \"${{ github.event.pull_request.user.login }}\",
-            \"PullRequestCreatedTime\": \"${{ github.event.pull_request.created_at }}\",
-            \"IssueStatus\": \"${{ github.event.pull_request.state }}\",
-            \"PullRequestTitle\": \"${{ github.event.pull_request.title }}\",
-            \"PullRequestDescription\": \"${{ github.event.pull_request.body }}\"
+            \"PullRequestNumber"\: \"${{ github.event.pull_request.number }}\",
+            \"PullRequestAuthor"\: \"${{ github.event.pull_request.user.login }}\",
+            \"PullRequestCreatedTime"\: \"${{ github.event.pull_request.created_at }}\",
+            \"IssueStatus"\: \"${{ github.event.pull_request.state }}\",
+            \"PullRequestTitle"\: \"${{ github.event.pull_request.title }}\",
+            \"PullRequestDescription"\: \"${{ github.event.pull_request.body }}\"
           }
         }"
