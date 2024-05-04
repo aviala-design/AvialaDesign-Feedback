@@ -43,8 +43,9 @@ jobs:
       env:
         FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
         ISSUES_TABLE_ID: ${{ secrets.ISSUES_TABLE_ID }}
+        APP_TOKEN: ${{ secrets.APP_TOKEN }}
       run: |
-        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$FEISHU_APP_TOKEN/tables/$ISSUES_TABLE_ID/records" \
+        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKEN/tables/$ISSUES_TABLE_ID/records" \
         -H 'Content-Type: application/json' \
         -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
         -d "{
@@ -63,8 +64,9 @@ jobs:
       env:
         FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
         PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
+        APP_TOKEN: ${{ secrets.c }}
       run: |
-        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$FEISHU_APP_TOKENx/tables/$FEISHU_APP_TOKEN/records" \
+        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKENx/tables/$APP_TOKEN/records" \
         -H 'Content-Type: application/json' \
         -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
         -d "{
