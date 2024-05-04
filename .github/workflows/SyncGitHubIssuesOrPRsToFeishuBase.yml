@@ -20,13 +20,23 @@ jobs:
         APP_ID: ${{ secrets.APP_ID }}
         APP_SECRET: ${{ secrets.APP_SECRET }}
       run: |
-        curl -i -X POST 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal' \
-        -H 'Content-Type: application/json' \
-        -d "{
-          \"app_id\": \"$APP_ID\",
-          \"app_secret\": \"$APP_SECRET\"
-        }" | jq -r '.tenant_access_token' > feishu_app_token.txt
-        echo "::set-output name=feishu_app_token::$(cat feishu_app_token.txt)"
+        python <<EOF
+        import requests
+        import os
+
+        app_id = os.getenv('APP_ID')
+        app_secret = os.getenv('APP_SECRET')
+
+        url = 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal'
+        data = {
+            'app_id': app_id,
+            'app_secret': app_secret
+        }
+        response = requests.post(url, json=data)
+        response.raise_for_status()
+        token = response.json()['tenant_access_token']
+        print(f'::set-output name=feishu_app_token::{token}')
+        EOF
         
     - name: Sync Issue to Feishu Table
       if: github.event_name == 'issues'
@@ -34,7 +44,7 @@ jobs:
         FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
         ISSUES_TABLE_ID: ${{ secrets.ISSUES_TABLE_ID }}
       run: |
-        curl -i -X POST 'https://open.feishu.cn/open-apis/bitable/v1/apps/$ISSUES_TABLE_ID/tables/tblxaBIyBtMhzyxj/records' \
+        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$ISSUES_TABLE_ID/tables/tblxaBIyBtMhzyxj/records" \
         -H 'Content-Type: application/json' \
         -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
         -d "{
@@ -54,7 +64,7 @@ jobs:
         FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
         PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
       run: |
-        curl -i -X POST 'https://open.feishu.cn/open-apis/bitable/v1/apps/$PR_TABLE_ID/tables/tblxaBIyBtMhzyxj/records' \
+        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$PR_TABLE_ID/tables/tblxaBIyBtMhzyxj/records" \
         -H 'Content-Type: application/json' \
         -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
         -d "{
