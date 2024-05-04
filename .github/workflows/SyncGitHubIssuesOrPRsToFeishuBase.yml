@@ -12,7 +12,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       
     - name: Get Feishu App Access Token
       id: get_feishu_token
@@ -22,28 +22,48 @@ jobs:
       run: |
         curl -i -X POST 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal' \
         -H 'Content-Type: application/json' \
-        -d "{\"app_id\":\"$APP_ID\",\"app_secret\":\"$APP_SECRET\"}" | \
-        jq -r '.tenant_access_token' > feishu_app_token.txt
+        -d "{
+          \"app_id\": \"$APP_ID\",
+          \"app_secret\": \"$APP_SECRET\"
+        }" | jq -r '.tenant_access_token' > feishu_app_token.txt
         echo "::set-output name=feishu_app_token::$(cat feishu_app_token.txt)"
         
-    - name: Sync Issues to Feishu
+    - name: Sync Issue to Feishu Table
       if: github.event_name == 'issues'
       env:
         FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
         ISSUES_TABLE_ID: ${{ secrets.ISSUES_TABLE_ID }}
       run: |
-        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$ISSUES_TABLE_ID/tables/tblxaBIyBtMhzyxj/records" \
+        curl -i -X POST 'https://open.feishu.cn/open-apis/bitable/v1/apps/$ISSUES_TABLE_ID/tables/tblxaBIyBtMhzyxj/records' \
         -H 'Content-Type: application/json' \
         -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
-        -d "{\"fields\":{\"IssueNumber\":\"${{ github.event.issue.number }}\",\"IssueAuthor\":\"${{ github.event.issue.user.login }}\",\"IssueCreatedTime\":\"${{ github.event.issue.created_at }}\",\"IssueStatus\":\"${{ github.event.issue.state }}\",\"IssueTitle\":\"${{ github.event.issue.title }}\",\"IssueDescription\":\"${{ github.event.issue.body }}\" }}"
+        -d "{
+          \"fields\": {
+            \"IssueNumber\": \"${{ github.event.issue.number }}\",
+            \"IssueAuthor\": \"${{ github.event.issue.user.login }}\",
+            \"IssueCreatedTime\": \"${{ github.event.issue.created_at }}\",
+            \"IssueStatus\": \"${{ github.event.issue.state }}\",
+            \"IssueTitle\": \"${{ github.event.issue.title }}\",
+            \"IssueDescription\": \"${{ github.event.issue.body }}\"
+          }
+        }"
         
-    - name: Sync Pull Requests to Feishu  
+    - name: Sync Pull Request to Feishu Table  
       if: github.event_name == 'pull_request'
       env:
         FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
         PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
       run: |
-        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$PR_TABLE_ID/tables/tblxaBIyBtMhzyxj/records" \
+        curl -i -X POST 'https://open.feishu.cn/open-apis/bitable/v1/apps/$PR_TABLE_ID/tables/tblxaBIyBtMhzyxj/records' \
         -H 'Content-Type: application/json' \
         -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
-        -d "{\"fields\":{\"PullRequestNumber\":\"${{ github.event.pull_request.number }}\",\"PullRequestAuthor\":\"${{ github.event.pull_request.user.login }}\",\"PullRequestCreatedTime\":\"${{ github.event.pull_request.created_at }}\",\"IssueStatus\":\"${{ github.event.pull_request.state }}\",\"PullRequestTitle\":\"${{ github.event.pull_request.title }}\",\"PullRequestDescription\":\"${{ github.event.pull_request.body }}\" }}"
+        -d "{
+          \"fields\": {
+            \"PullRequestNumber\": \"${{ github.event.pull_request.number }}\",
+            \"PullRequestAuthor\": \"${{ github.event.pull_request.user.login }}\",
+            \"PullRequestCreatedTime\": \"${{ github.event.pull_request.created_at }}\",
+            \"IssueStatus\": \"${{ github.event.pull_request.state }}\",
+            \"PullRequestTitle\": \"${{ github.event.pull_request.title }}\",
+            \"PullRequestDescription\": \"${{ github.event.pull_request.body }}\"
+          }
+        }"
