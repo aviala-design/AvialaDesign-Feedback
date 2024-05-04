@@ -66,7 +66,7 @@ jobs:
         PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
         APP_TOKEN: ${{ secrets.APP_TOKEN }}
       run: |
-        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKENx/tables/$PR_TABLE_ID/records" \
+        curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKEN/tables/$PR_TABLE_ID/records" \
         -H 'Content-Type: application/json' \
         -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
         -d "{
