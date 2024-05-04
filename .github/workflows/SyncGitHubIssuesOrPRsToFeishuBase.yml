@@ -64,7 +64,7 @@ jobs:
       env:
         FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
         PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
-        APP_TOKEN: ${{ secrets.c }}
+        APP_TOKEN: ${{ secrets.APP_TOKEN }}
       run: |
         curl -i -X POST "https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKENx/tables/$APP_TOKEN/records" \
         -H 'Content-Type: application/json' \
