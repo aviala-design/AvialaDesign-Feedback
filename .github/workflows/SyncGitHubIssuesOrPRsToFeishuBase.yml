@@ -1,96 +1,67 @@
-name: GitHub Actions to Feishu Table
+name: Sync GitHub Issues and Pull Requests to Feishu Table
+
 on:
   issues:
-    types: [opened, closed, reopened, reopened]
+    types: [opened, closed, reopened, edited]
   pull_request:
-    types: [opened, closed, reopened, reopened]
+    types: [opened, closed, reopened, edited]
+
 jobs:
-  sync-table:
+  sync-to-feishu:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set environment variables
-        env:
-          APP_ID: ${{ secrets.APP_ID }}
-          APP_SECRET: ${{ secrets.APP_SECRET }}
-          APP_TOKEN: ${{ secrets.APP_TOKEN }}
-          ISSUES_TABLE_ID: ${{ secrets.ISSUES_TABLE_ID }}
-          PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
-      - name: Get event details
-        run: |
-          EVENT_TYPE=$(${GITHUB_EVENT_TYPE})
-          EVENT_DATA=$(${GITHUB_EVENT_PATH})
-      - name: Determine table ID
-        run: |
-          if [ "$EVENT_TYPE" == "issues" ]; then
-            TABLE_ID=$ISSUES_TABLE_ID
-          elif [ "$EVENT_TYPE" == "pull_request" ]; then
-            TABLE_ID=$PR_TABLE_ID
-          fi
-      - name: Get event data
-        run: |
-          EVENT_DATA=$(jq '.[] | select(.event_type == "'$EVENT_TYPE'")' $EVENT_DATA)
-      - name: Sync data to Feishu table
-        run: |
-          curl -i -X POST \
-            https://open.feishu.cn/open-apis/bitable/v1/apps/${APP_TOKEN}/tables/${TABLE_ID}/records \
-            -H 'Content-Type: application/json' \
-            -d '{
-              "fields": {
-                "人员": [
-                  {
-                    "id": "ou_2910013f1e6456f16a0ce75ede950a0a"
-                  },
-                  {
-                    "id": "ou_e04138c9633dd0d2ea166d79f548ab5d"
-                  }
-                ],
-                "单向关联": [
-                  "recHTLvO7x",
-                  "recbS8zb2m"
-                ],
-                "单选": "选项1",
-                "双向关联": [
-                  "recHTLvO7x",
-                  "recbS8zb2m"
-                ],
-                "地理位置": "116.397755,39.903179",
-                "复选框": true,
-                "多行文本": "多行文本内容",
-                "多选": [
-                  "选项1",
-                  "选项2"
-                ],
-                "数字": 100,
-                "日期": 1674206443000,
-                "条码": "qawqe",
-                "电话号码": "13026162666",
-                "群组": [
-                  {
-                    "id": "oc_cd07f55f14d6f4a4f1b51504e7e97f48"
-                  }
-                ],
-                "评分": 3,
-                "货币": 3,
-                "超链接": {
-                  "link": "https://www.feishu.cn/product/base",
-                  "text": "飞书多维表格官网"
-                },
-                "进度": 0.25,
-                "附件": [
-                  {
-                    "file_token": "DRiFbwaKsoZaLax4WKZbEGCccoe"
-                  },
-                  {
-                    "file_token": "BZk3bL1Enoy4pzxaPL9bNeKqcLe"
-                  },
-                  {
-                    "file_token": "EmL4bhjFFovrt9xZgaSbjJk9c1b"
-                  },
-                  {
-                    "file_token": "Vl3FbVkvnowlgpxpqsAbBrtFcrd"
-                  }
-                ]
-              }
-            }'
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Get Feishu App Access Token
+      id: get_feishu_token
+      env:
+        APP_ID: ${{ secrets.APP_ID }}
+        APP_SECRET: ${{ secrets.APP_SECRET }}
+      run: |
+        curl -X POST -H "Content-Type: application/json" \
+        -d "{\"app_id\":\"$APP_ID\",\"app_secret\":\"$APP_SECRET\"}" \
+        https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal | \
+        jq -r '.tenant_access_token' > feishu_app_token.txt
+        echo "::set-output name=feishu_app_token::$(cat feishu_app_token.txt)"
+        
+    - name: Sync Issues to Feishu
+      if: github.event_name == 'issues'
+      env:
+        FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
+        ISSUES_TABLE_ID: ${{ secrets.ISSUES_TABLE_ID }}
+      run: |
+        issue_number=$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")
+        issue_author=$(jq -r '.issue.user.login' "$GITHUB_EVENT_PATH")
+        issue_created_at=$(jq -r '.issue.created_at' "$GITHUB_EVENT_PATH")
+        issue_status=$(jq -r '.issue.state' "$GITHUB_EVENT_PATH")
+        issue_title=$(jq -r '.issue.title' "$GITHUB_EVENT_PATH")
+        issue_body=$(jq -r '.issue.body' "$GITHUB_EVENT_PATH")
+        issue_updated_at=$(jq -r '.issue.updated_at' "$GITHUB_EVENT_PATH")
+        
+        curl -X POST \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
+        -d "{\"fields\":{\"IssueNumber\":\"$issue_number\",\"IssueAuthor\":\"$issue_author\",\"IssueCreatedTime\":\"$issue_created_at\",\"IssueStatus\":\"$issue_status\",\"IssueTitle\":\"$issue_title\",\"IssueDescription\":\"$issue_body\",\"LastModifiedTime\":\"$issue_updated_at\"}}" \
+        https://open.feishu.cn/open-apis/bitable/v1/apps/$ISSUES_TABLE_ID/records
+        
+    - name: Sync Pull Requests to Feishu  
+      if: github.event_name == 'pull_request'
+      env:
+        FEISHU_APP_TOKEN: ${{ steps.get_feishu_token.outputs.feishu_app_token }}
+        PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
+      run: |
+        pr_number=$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")
+        pr_author=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+        pr_created_at=$(jq -r '.pull_request.created_at' "$GITHUB_EVENT_PATH")
+        pr_status=$(jq -r '.pull_request.state' "$GITHUB_EVENT_PATH")
+        pr_title=$(jq -r '.pull_request.title' "$GITHUB_EVENT_PATH")
+        pr_body=$(jq -r '.pull_request.body' "$GITHUB_EVENT_PATH")
+        pr_updated_at=$(jq -r '.pull_request.updated_at' "$GITHUB_EVENT_PATH")
+        
+        curl -X POST \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $FEISHU_APP_TOKEN" \
+        -d "{\"fields\":{\"PullRequestNumber\":\"$pr_number\",\"PullRequestAuthor\":\"$pr_author\",\"PullRequestCreatedTime\":\"$pr_created_at\",\"IssueStatus\":\"$pr_status\",\"PullRequestTitle\":\"$pr_title\",\"PullRequestDescription\":\"$pr_body\",\"LastModifiedTime\":\"$pr_updated_at\"}}" \
+        https://open.feishu.cn/open-apis/bitable/v1/apps/$PR_TABLE_ID/records
