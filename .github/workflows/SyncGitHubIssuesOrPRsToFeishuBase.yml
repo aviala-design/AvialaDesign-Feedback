@@ -1,65 +1,96 @@
-name: Sync GitHub Issues and Pull Requests to Feishu Table
-
+name: GitHub Actions to Feishu Table
 on:
   issues:
-    types: [opened, closed, reopened]
+    types: [opened, closed, reopened, reopened]
   pull_request:
-    types: [opened, closed, reopened]
-
+    types: [opened, closed, reopened, reopened]
 jobs:
-  sync-to-feishu:
+  sync-table:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Get Feishu App Access Token
-      id: get_feishu_token
-      env:
-        APP_ID: ${{ secrets.APP_ID }}
-        APP_SECRET: ${{ secrets.APP_SECRET }}
-      run: |
-        # Use APP_ID and APP_SECRET to get app_access_token
-        app_access_token=$(curl -X POST -H 'Content-Type: application/json' \
-          -d "{\"app_id\":\"$APP_ID\",\"app_secret\":\"$APP_SECRET\"}" \
-          https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal | jq -r '.tenant_access_token')
-        echo "app_access_token=$app_access_token" >> $GITHUB_OUTPUT
-        
-    - name: Sync Issues to Feishu
-      if: github.event_name == 'issues'
-      env:
-        APP_TOKEN: ${{ secrets.APP_TOKEN }}
-        ISSUES_TABLE_ID: ${{ secrets.ISSUES_TABLE_ID }}
-      run: |
-        issue_number=$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")
-        issue_author=$(jq -r '.issue.user.login' "$GITHUB_EVENT_PATH")
-        issue_created_at=$(jq -r '.issue.created_at' "$GITHUB_EVENT_PATH")
-        issue_status=$(jq -r '.issue.state' "$GITHUB_EVENT_PATH")
-        issue_title=$(jq -r '.issue.title' "$GITHUB_EVENT_PATH")
-        issue_description=$(jq -r '.issue.body' "$GITHUB_EVENT_PATH")
-        
-        # Use APP_TOKEN and ISSUES_TABLE_ID to create a new record in the Feishu table
-        curl -X POST -H 'Content-Type: application/json' \
-          -H "Authorization: Bearer $APP_TOKEN" \
-          -d "{\"fields\":{\"IssueNumber\":\"$issue_number\",\"IssueAuthor\":\"$issue_author\",\"IssueCreatedTime\":\"$issue_created_at\",\"IssueStatus\":\"$issue_status\",\"IssueTitle\":\"$issue_title\",\"IssueDescription\":\"$issue_description\"}}" \
-          https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKEN/tables/$ISSUES_TABLE_ID/records
-          
-    - name: Sync Pull Requests to Feishu  
-      if: github.event_name == 'pull_request'
-      env:
-        APP_TOKEN: ${{ secrets.APP_TOKEN }}
-        PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
-      run: |
-        pr_number=$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")
-        pr_author=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
-        pr_created_at=$(jq -r '.pull_request.created_at' "$GITHUB_EVENT_PATH")
-        pr_status=$(jq -r '.pull_request.state' "$GITHUB_EVENT_PATH")
-        pr_title=$(jq -r '.pull_request.title' "$GITHUB_EVENT_PATH")
-        pr_description=$(jq -r '.pull_request.body' "$GITHUB_EVENT_PATH")
-        
-        # Use APP_TOKEN and PR_TABLE_ID to create a new record in the Feishu table
-        curl -X POST -H 'Content-Type: application/json' \
-          -H "Authorization: Bearer $APP_TOKEN" \
-          -d "{\"fields\":{\"PullRequestNumber\":\"$pr_number\",\"PullRequestAuthor\":\"$pr_author\",\"PullRequestCreatedTime\":\"$pr_created_at\",\"IssueStatus\":\"$pr_status\",\"PullRequestTitle\":\"$pr_title\",\"PullRequestDescription\":\"$pr_description\"}}" \
-          https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKEN/tables/$PR_TABLE_ID/records
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set environment variables
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_SECRET: ${{ secrets.APP_SECRET }}
+          APP_TOKEN: ${{ secrets.APP_TOKEN }}
+          ISSUES_TABLE_ID: ${{ secrets.ISSUES_TABLE_ID }}
+          PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
+      - name: Get event details
+        run: |
+          EVENT_TYPE=$(${GITHUB_EVENT_TYPE})
+          EVENT_DATA=$(${GITHUB_EVENT_PATH})
+      - name: Determine table ID
+        run: |
+          if [ "$EVENT_TYPE" == "issues" ]; then
+            TABLE_ID=$ISSUES_TABLE_ID
+          elif [ "$EVENT_TYPE" == "pull_request" ]; then
+            TABLE_ID=$PR_TABLE_ID
+          fi
+      - name: Get event data
+        run: |
+          EVENT_DATA=$(jq '.[] | select(.event_type == "'$EVENT_TYPE'")' $EVENT_DATA)
+      - name: Sync data to Feishu table
+        run: |
+          curl -i -X POST \
+            https://open.feishu.cn/open-apis/bitable/v1/apps/${APP_TOKEN}/tables/${TABLE_ID}/records \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "fields": {
+                "人员": [
+                  {
+                    "id": "ou_2910013f1e6456f16a0ce75ede950a0a"
+                  },
+                  {
+                    "id": "ou_e04138c9633dd0d2ea166d79f548ab5d"
+                  }
+                ],
+                "单向关联": [
+                  "recHTLvO7x",
+                  "recbS8zb2m"
+                ],
+                "单选": "选项1",
+                "双向关联": [
+                  "recHTLvO7x",
+                  "recbS8zb2m"
+                ],
+                "地理位置": "116.397755,39.903179",
+                "复选框": true,
+                "多行文本": "多行文本内容",
+                "多选": [
+                  "选项1",
+                  "选项2"
+                ],
+                "数字": 100,
+                "日期": 1674206443000,
+                "条码": "qawqe",
+                "电话号码": "13026162666",
+                "群组": [
+                  {
+                    "id": "oc_cd07f55f14d6f4a4f1b51504e7e97f48"
+                  }
+                ],
+                "评分": 3,
+                "货币": 3,
+                "超链接": {
+                  "link": "https://www.feishu.cn/product/base",
+                  "text": "飞书多维表格官网"
+                },
+                "进度": 0.25,
+                "附件": [
+                  {
+                    "file_token": "DRiFbwaKsoZaLax4WKZbEGCccoe"
+                  },
+                  {
+                    "file_token": "BZk3bL1Enoy4pzxaPL9bNeKqcLe"
+                  },
+                  {
+                    "file_token": "EmL4bhjFFovrt9xZgaSbjJk9c1b"
+                  },
+                  {
+                    "file_token": "Vl3FbVkvnowlgpxpqsAbBrtFcrd"
+                  }
+                ]
+              }
+            }'
