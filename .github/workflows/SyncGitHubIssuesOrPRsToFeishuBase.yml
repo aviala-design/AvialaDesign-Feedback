@@ -18,7 +18,10 @@ jobs:
     - name: Check for 'valuable' label
       id: check_label
       run: |
-        if [[ "${{ github.event.issue.labels.*.name }}" == *"valuable"* || "${{ github.event.pull_request.labels.*.name }}" == *"valuable"* ]]; then
+        issue_labels=$(echo '${{ join(github.event.issue.labels.*.name, ", ") }}')
+        pr_labels=$(echo '${{ join(github.event.pull_request.labels.*.name, ", ") }}')
+        
+        if [[ $issue_labels == *"valuable"* || $pr_labels == *"valuable"* ]]; then
           echo "has_valuable_label=true" >> $GITHUB_OUTPUT
         else
           echo "has_valuable_label=false" >> $GITHUB_OUTPUT
