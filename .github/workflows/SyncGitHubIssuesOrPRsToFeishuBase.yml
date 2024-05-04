@@ -42,6 +42,7 @@ jobs:
         # Use APP_TOKEN and ISSUES_TABLE_ID to write issue data to Feishu table
         curl -i -X POST 'https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKEN/tables/$ISSUES_TABLE_ID/records' \
         -H 'Content-Type: application/json' \
+        -H 'Authorization: Bearer ${{ steps.get_feishu_token.outputs.TENANT_ACCESS_TOKEN }}' \
         -d "{
           \"fields\": {
             \"IssueNumber\": \"$ISSUE_NUMBER\",
@@ -70,6 +71,7 @@ jobs:
         # Use APP_TOKEN and PR_TABLE_ID to write pull request data to Feishu table
         curl -i -X POST 'https://open.feishu.cn/open-apis/bitable/v1/apps/$APP_TOKEN/tables/$PR_TABLE_ID/records' \
         -H 'Content-Type: application/json' \
+        -H 'Authorization: Bearer ${{ steps.get_feishu_token.outputs.TENANT_ACCESS_TOKEN }}' \
         -d "{
           \"fields\": {
             \"PullRequestNumber\": \"$PR_NUMBER\",
