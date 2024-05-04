@@ -1,0 +1,60 @@
+name: Sync GitHub Issues/PRs to Feishu Table
+
+on:
+  issues:
+    types: [opened, closed, reopened, edited]
+  pull_request:
+    types: [opened, closed, reopened, edited]
+
+jobs:
+  sync-to-feishu:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Check if 'valuable' label exists
+      id: check_label
+      run: |
+        # Check if the 'valuable' label exists on the issue/PR
+        if gh issue list --limit 1 --label valuable --repo ${{ github.repository }} | grep -q 'valuable'; then
+          echo "::set-output name=has_label::true"
+        else
+          echo "::set-output name=has_label::false"
+        fi
+        
+    - name: Sync to Feishu Table
+      if: steps.check_label.outputs.has_label == 'true'
+      env:
+        FEISHU_ACCESS_TOKEN: ${{ secrets.FEISHU_ACCESS_TOKEN }}
+        ISSUES_TABLE_ID: ${{ secrets.ISSUES_TABLE_ID }}
+        PR_TABLE_ID: ${{ secrets.PR_TABLE_ID }}
+      run: |
+        # Get Feishu access token
+        access_token=$FEISHU_ACCESS_TOKEN
+        
+        # Determine the event type and get the relevant data
+        if [[ "${{ github.event_name }}" == "issues" ]]; then
+          issue_number=${{ github.event.issue.number }}
+          issue_author=${{ github.event.issue.user.login }}
+          issue_created_at=${{ github.event.issue.created_at }}
+          issue_status=${{ github.event.issue.state }}
+          issue_title=${{ github.event.issue.title }}
+          issue_description=${{ github.event.issue.body }}
+          issue_updated_at=${{ github.event.issue.updated_at }}
+          
+          # Write data to Feishu Issues table
+          curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $access_token" -d "{\"fields\":{\"IssueNumber\":\"$issue_number\",\"IssueAuthor\":\"$issue_author\",\"IssueCreatedTime\":\"$issue_created_at\",\"IssueStatus\":\"$issue_status\",\"IssueTitle\":\"$issue_title\",\"IssueDescription\":\"$issue_description\",\"LastModifiedTime\":\"$issue_updated_at\"}}" https://open.feishu.cn/open-apis/bitable/v1/apps/${{ secrets.APP_TOKEN }}/tables/$ISSUES_TABLE_ID/records
+        elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          pr_number=${{ github.event.pull_request.number }}
+          pr_author=${{ github.event.pull_request.user.login }}
+          pr_created_at=${{ github.event.pull_request.created_at }}
+          pr_status=${{ github.event.pull_request.state }}
+          pr_title=${{ github.event.pull_request.title }}
+          pr_description=${{ github.event.pull_request.body }}
+          pr_updated_at=${{ github.event.pull_request.updated_at }}
+          
+          # Write data to Feishu PR table
+          curl -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $access_token" -d "{\"fields\":{\"PullRequestNumber\":\"$pr_number\",\"PullRequestAuthor\":\"$pr_author\",\"PullRequestCreatedTime\":\"$pr_created_at\",\"IssueStatus\":\"$pr_status\",\"PullRequestTitle\":\"$pr_title\",\"PullRequestDescription\":\"$pr_description\",\"LastModifiedTime\":\"$pr_updated_at\"}}" https://open.feishu.cn/open-apis/bitable/v1/apps/${{ secrets.APP_TOKEN }}/tables/$PR_TABLE_ID/records
+        fi
